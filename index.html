@@ -1686,7 +1686,7 @@ function demColor(val){
   return DEM_COLORS[DEM_COLORS.length-1];
 }
 function fmtPop(n){ return n>=1000?(n/1000).toFixed(2)+'M':n.toFixed(1)+'k'; }
-function fmtRM(n){ return 'RM '+Number(n).toLocaleString(); }
+function fmtRMdem(n){ return 'RM '+Number(n).toLocaleString(); }
 
 function demSparkSVG(pairs, color){
   if(!pairs||pairs.length<2) return '';
@@ -1733,8 +1733,8 @@ function showDemPanel(feature){
     <hr class="dem-divider">
     <div class="dem-section">
       <div class="dem-slabel">Household income (${s.income_year||'2024'})</div>
-      <div class="dem-stat"><span class="key">Median</span><span class="val">${fmtRM(s.income_median)}/mo</span></div>
-      <div class="dem-stat"><span class="key">Mean</span><span class="val">${fmtRM(s.income_mean)}/mo</span></div>
+      <div class="dem-stat"><span class="key">Median</span><span class="val">${fmtRMdem(s.income_median)}/mo</span></div>
+      <div class="dem-stat"><span class="key">Mean</span><span class="val">${fmtRMdem(s.income_mean)}/mo</span></div>
       ${demSparkSVG(s.income_trend,'#2e7364')}
     </div>
     <hr class="dem-divider">
@@ -1772,7 +1772,7 @@ function buildDemLayer(){
           if(e.target!==demSelected) e.target.setStyle({weight:2,color:'#2e7364',fillOpacity:0.72});
           e.target.bringToFront();
           const s=f.properties.stats;
-          e.target.bindTooltip(`<b>${f.properties.shapeName}</b><br>${s.state} &middot; ${fmtPop(s.total)} &middot; ${fmtRM(s.income_median)}/mo`,
+          e.target.bindTooltip(`<b>${f.properties.shapeName}</b><br>${s.state} &middot; ${fmtPop(s.total)} &middot; ${fmtRMdem(s.income_median)}/mo`,
             {sticky:true,direction:'top',offset:[0,-4]}).openTooltip(e.latlng);
         },
         mouseout:e=>{ if(e.target!==demSelected) demLayer.resetStyle(e.target); e.target.closeTooltip(); },
