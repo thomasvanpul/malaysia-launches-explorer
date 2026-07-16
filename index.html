@@ -635,7 +635,7 @@ L.control.zoom({position:'bottomright'}).addTo(map);
 (function(){
   const c = map.getContainer();
   c.style.willChange = 'transform';
-  const MAX_LIVE_DELTA = 1.5;
+  const MAX_LIVE_DELTA = 0.75;
   let raf = null, committedZoom = map.getZoom(), liveZoom = null;
   let point = null, gestureRect = null, settleTimer = null, rebasing = false;
   map.on('zoomend', function(){ if(!settleTimer && !rebasing) committedZoom = map.getZoom(); });
@@ -667,7 +667,7 @@ L.control.zoom({position:'bottomright'}).addTo(map);
       map.setZoomAround(L.point(fp.x, fp.y), fz, {animate:false});
       committedZoom = fz;
       liveZoom = null; gestureRect = null; settleTimer = null;
-    }, 140);
+    }, 80);
   }, {passive:false});
 })();
 const baseCarto = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
