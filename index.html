@@ -630,27 +630,39 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>'
 const map = L.map('map', {zoomControl:false, scrollWheelZoom:false, zoomSnap:0, zoomDelta:1}).setView([4.1, 102.0], 7);
 L.control.zoom({position:'bottomright'}).addTo(map);
 
-// Smooth zoom — accumulate wheel delta per animation frame, fire one
-// Leaflet animated setZoomAround per frame (CSS transition, GPU-accelerated).
-// No per-frame JS re-renders, no floating-point drift → no jumping, no shaking.
+// Smooth zoom: CSS scale gives instant visual feedback during scroll so tiles
+// never go blank mid-gesture. One real Leaflet zoom commit fires after the
+// gesture settles (120ms idle), reloading tiles once rather than every event.
 (function(){
-  let targetZoom = map.getZoom();
-  let mousePos = null;
-  let raf = null;
-  function apply(){
-    raf = null;
-    if(Math.abs(targetZoom - map.getZoom()) < 0.001) return;
-    map.setZoomAround(mousePos, targetZoom, {animate:false});
-  }
-  map.getContainer().addEventListener('wheel', function(e){
+  const c = map.getContainer();
+  const SETTLE = 120;
+  let committed = map.getZoom(), target = map.getZoom();
+  let pivot = null, raf = null, timer = null;
+
+  c.addEventListener('wheel', function(e){
     e.preventDefault();
-    mousePos = map.mouseEventToContainerPoint(e);
+    if(!pivot){
+      const r = c.getBoundingClientRect();
+      pivot = L.point(e.clientX - r.left, e.clientY - r.top);
+    }
     const px = e.deltaMode === 1 ? e.deltaY * 20 : e.deltaMode === 2 ? e.deltaY * 600 : e.deltaY;
-    const zd = -px * 0.005;
-    targetZoom = Math.max(map.getMinZoom(), Math.min(map.getMaxZoom(), targetZoom + zd));
-    if(!raf) raf = requestAnimationFrame(apply);
+    target = Math.max(map.getMinZoom(), Math.min(map.getMaxZoom(), target - px * 0.005));
+    if(!raf) raf = requestAnimationFrame(function(){
+      raf = null;
+      c.style.transformOrigin = pivot.x + 'px ' + pivot.y + 'px';
+      c.style.transform = 'scale(' + Math.pow(2, target - committed) + ')';
+    });
+    clearTimeout(timer);
+    timer = setTimeout(function(){
+      timer = null;
+      c.style.transform = '';
+      c.style.transformOrigin = '';
+      map.setZoomAround(pivot, target, {animate:false});
+      committed = map.getZoom();
+      target = committed;
+      pivot = null;
+    }, SETTLE);
   }, {passive:false});
-  map.on('zoomend', function(){ targetZoom = map.getZoom(); });
 })();
 const baseCarto = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
   attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a> · Data: TEDUH/KPKT',
