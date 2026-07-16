@@ -1,5 +1,7 @@
 # Malaysia New Launches Explorer
 
+**Live site: [malaysia-launches-explorer.vercel.app](https://malaysia-launches-explorer.vercel.app)**
+
 Interactive map of new residential property launches across Peninsular Malaysia, with a Claude-powered project assistant and public transit overlays.
 
 Built as an integration project at **EdgeProp Malaysia**, combining Mr. Hock's property launches dataset with additional data layers (transit, demographics, amenities).
