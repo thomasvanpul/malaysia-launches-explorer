@@ -645,8 +645,8 @@ L.control.zoom({position:'bottomright'}).addTo(map);
   map.getContainer().addEventListener('wheel', function(e){
     e.preventDefault();
     mousePos = map.mouseEventToContainerPoint(e);
-    const px = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * 500 : e.deltaY;
-    const zd = (1.0 - Math.pow(0.998, Math.abs(px))) * (px > 0 ? -1 : 1);
+    const px = e.deltaMode === 1 ? e.deltaY * 20 : e.deltaMode === 2 ? e.deltaY * 600 : e.deltaY;
+    const zd = -px * 0.005;
     targetZoom = Math.max(map.getMinZoom(), Math.min(map.getMaxZoom(), targetZoom + zd));
     if(!raf) raf = requestAnimationFrame(apply);
   }, {passive:false});
@@ -685,7 +685,7 @@ function setBasemap(which){
 }
 
 const cluster = L.markerClusterGroup({
-  chunkedLoading:true, maxClusterRadius:52, spiderfyOnMaxZoom:true, disableClusteringAtZoom:15,
+  chunkedLoading:true, maxClusterRadius:52, spiderfyOnMaxZoom:true, disableClusteringAtZoom:15, animate:false,
   iconCreateFunction: c => {
     const n = c.getChildCount();
     const s = n < 50 ? 32 : n < 300 ? 38 : 46;
