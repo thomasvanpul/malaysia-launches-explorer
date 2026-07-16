@@ -627,35 +627,30 @@ const fmtRM = v => {
 };
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const map = L.map('map', {zoomControl:false, scrollWheelZoom:false, zoomSnap:0.5, zoomDelta:0.5}).setView([4.1, 102.0], 7);
+const map = L.map('map', {zoomControl:false, scrollWheelZoom:false, zoomSnap:0, zoomDelta:1}).setView([4.1, 102.0], 7);
 L.control.zoom({position:'bottomright'}).addTo(map);
 
-// Smooth zoom toward cursor — eased setZoomAround at every frame so clusters
-// always split at the right time (no CSS scale blur).
+// Smooth zoom — accumulate wheel delta per animation frame, fire one
+// Leaflet animated setZoomAround per frame (CSS transition, GPU-accelerated).
+// No per-frame JS re-renders, no floating-point drift → no jumping, no shaking.
 (function(){
   let targetZoom = map.getZoom();
-  let currentZoom = map.getZoom();
   let mousePos = null;
   let raf = null;
-  function step(){
-    const diff = targetZoom - currentZoom;
-    if(Math.abs(diff) < 0.005){
-      map.setZoomAround(mousePos, targetZoom, {animate:false});
-      raf = null;
-      return;
-    }
-    currentZoom += diff * 0.2;
-    map.setZoomAround(mousePos, currentZoom, {animate:false});
-    raf = requestAnimationFrame(step);
+  function apply(){
+    raf = null;
+    if(Math.abs(targetZoom - map.getZoom()) < 0.001) return;
+    map.setZoomAround(mousePos, targetZoom);
   }
   map.getContainer().addEventListener('wheel', function(e){
     e.preventDefault();
-    const r = map.getContainer().getBoundingClientRect();
-    mousePos = L.point(e.clientX - r.left, e.clientY - r.top);
-    const delta = -e.deltaY * (e.deltaMode === 1 ? 0.15 : e.deltaMode === 2 ? 1.0 : 0.005);
-    targetZoom = Math.max(map.getMinZoom(), Math.min(map.getMaxZoom(), targetZoom + delta));
-    if(!raf){ currentZoom = map.getZoom(); raf = requestAnimationFrame(step); }
+    mousePos = map.mouseEventToContainerPoint(e);
+    const px = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * 500 : e.deltaY;
+    const zd = (1.0 - Math.pow(0.998, Math.abs(px))) * (px > 0 ? -1 : 1);
+    targetZoom = Math.max(map.getMinZoom(), Math.min(map.getMaxZoom(), targetZoom + zd));
+    if(!raf) raf = requestAnimationFrame(apply);
   }, {passive:false});
+  map.on('zoomend', function(){ targetZoom = map.getZoom(); });
 })();
 const baseCarto = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
   attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a> · Data: TEDUH/KPKT',
