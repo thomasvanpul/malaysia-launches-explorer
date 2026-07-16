@@ -630,44 +630,31 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>'
 const map = L.map('map', {zoomControl:false, scrollWheelZoom:false, zoomSnap:0.5, zoomDelta:0.5}).setView([4.1, 102.0], 7);
 L.control.zoom({position:'bottomright'}).addTo(map);
 
-// Smooth zoom toward cursor — CSS scale() live preview, single commit on settle.
-// Ported from thomasvanpul/malaysia_map.
+// Smooth zoom toward cursor — eased setZoomAround at every frame so clusters
+// always split at the right time (no CSS scale blur).
 (function(){
-  const c = map.getContainer();
-  c.style.willChange = 'transform';
-  const MAX_LIVE_DELTA = 0.75;
-  let raf = null, committedZoom = map.getZoom(), liveZoom = null;
-  let point = null, gestureRect = null, settleTimer = null, rebasing = false;
-  map.on('zoomend', function(){ if(!settleTimer && !rebasing) committedZoom = map.getZoom(); });
-  function paint(){
-    raf = null;
-    if(liveZoom === null || point === null) return;
-    if(Math.abs(liveZoom - committedZoom) > MAX_LIVE_DELTA){
-      rebasing = true;
-      map.setZoomAround(L.point(point.x, point.y), liveZoom, {animate:false});
-      committedZoom = liveZoom;
-      rebasing = false;
+  let targetZoom = map.getZoom();
+  let currentZoom = map.getZoom();
+  let mousePos = null;
+  let raf = null;
+  function step(){
+    const diff = targetZoom - currentZoom;
+    if(Math.abs(diff) < 0.005){
+      map.setZoomAround(mousePos, targetZoom, {animate:false});
+      raf = null;
+      return;
     }
-    const scale = Math.pow(2, liveZoom - committedZoom);
-    c.style.transformOrigin = point.x + 'px ' + point.y + 'px';
-    c.style.transform = 'scale(' + scale + ')';
+    currentZoom += diff * 0.2;
+    map.setZoomAround(mousePos, currentZoom, {animate:false});
+    raf = requestAnimationFrame(step);
   }
-  c.addEventListener('wheel', function(e){
+  map.getContainer().addEventListener('wheel', function(e){
     e.preventDefault();
-    if(!gestureRect) gestureRect = c.getBoundingClientRect();
-    point = {x: e.clientX - gestureRect.left, y: e.clientY - gestureRect.top};
-    const delta = -e.deltaY * (e.deltaMode === 1 ? 0.07 : e.deltaMode === 2 ? 0.7 : 0.007);
-    liveZoom = Math.max(map.getMinZoom(), Math.min(map.getMaxZoom(), (liveZoom !== null ? liveZoom : committedZoom) + delta));
-    if(!raf) raf = requestAnimationFrame(paint);
-    clearTimeout(settleTimer);
-    settleTimer = setTimeout(function(){
-      const fz = liveZoom, fp = point;
-      c.style.transform = '';
-      c.style.transformOrigin = '';
-      map.setZoomAround(L.point(fp.x, fp.y), fz, {animate:false});
-      committedZoom = fz;
-      liveZoom = null; gestureRect = null; settleTimer = null;
-    }, 80);
+    const r = map.getContainer().getBoundingClientRect();
+    mousePos = L.point(e.clientX - r.left, e.clientY - r.top);
+    const delta = -e.deltaY * (e.deltaMode === 1 ? 0.15 : e.deltaMode === 2 ? 1.0 : 0.005);
+    targetZoom = Math.max(map.getMinZoom(), Math.min(map.getMaxZoom(), targetZoom + delta));
+    if(!raf){ currentZoom = map.getZoom(); raf = requestAnimationFrame(step); }
   }, {passive:false});
 })();
 const baseCarto = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
