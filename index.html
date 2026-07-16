@@ -640,7 +640,7 @@ L.control.zoom({position:'bottomright'}).addTo(map);
   function apply(){
     raf = null;
     if(Math.abs(targetZoom - map.getZoom()) < 0.001) return;
-    map.setZoomAround(mousePos, targetZoom);
+    map.setZoomAround(mousePos, targetZoom, {animate:false});
   }
   map.getContainer().addEventListener('wheel', function(e){
     e.preventDefault();
