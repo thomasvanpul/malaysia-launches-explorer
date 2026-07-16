@@ -380,6 +380,35 @@
     .legend{top:auto;bottom:14px;right:12px;padding:8px 10px;max-width:180px}
   }
   @media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
+  /* ---------- demographics district panel ---------- */
+  .dem-card{position:absolute;z-index:1050;top:16px;right:16px;width:340px;max-height:calc(100% - 32px);overflow-y:auto;background:var(--paper);border-radius:14px;box-shadow:var(--shadow);display:none;overscroll-behavior:contain}
+  .dem-card::-webkit-scrollbar{width:6px}
+  .dem-card::-webkit-scrollbar-thumb{background:rgba(27,42,36,.18);border-radius:3px}
+  .dem-head{background:var(--ink);color:var(--paper);padding:14px 16px;position:sticky;top:0;z-index:2;border-radius:14px 14px 0 0}
+  .dem-head h2{font-size:15px;font-weight:700;margin:0 24px 2px 0}
+  .dem-head .sub{font-size:11px;opacity:.65}
+  .dem-x{position:absolute;top:10px;right:12px;background:none;border:none;color:var(--paper);font-size:19px;cursor:pointer;line-height:1;padding:4px}
+  .dem-body{padding:14px 16px 18px}
+  .dem-section{margin-bottom:14px}
+  .dem-section:last-child{margin-bottom:0}
+  .dem-slabel{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:7px;font-weight:600}
+  .dem-stat{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px}
+  .dem-stat .key{font-size:12px;color:var(--ink-soft)}
+  .dem-stat .val{font-size:13px;font-weight:700;color:var(--ink)}
+  .dem-big{font-size:26px;font-weight:800;color:var(--ink);line-height:1}
+  .dem-sub{font-size:11px;color:var(--ink-soft);margin-top:3px;line-height:1.5}
+  .dem-spark{width:100%;height:36px;margin-top:8px;overflow:visible}
+  .dem-divider{border:none;border-top:1px solid rgba(27,42,36,.1);margin:12px 0}
+  .dem-eth-row{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+  .dem-eth-label{font-size:11px;color:var(--ink);width:108px;flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dem-eth-wrap{flex:1;height:7px;background:rgba(27,42,36,.1);border-radius:4px;overflow:hidden}
+  .dem-eth-bar{height:100%;border-radius:4px;background:#2e7364}
+  .dem-eth-pct{font-size:10.5px;color:var(--ink-soft);width:32px;text-align:right;flex:none}
+  .dem-leg-swatch{display:flex;gap:2px;border-radius:4px;overflow:hidden;height:7px;margin-bottom:3px}
+  .dem-leg-swatch div{flex:1}
+  .dem-leg-labels{display:flex;justify-content:space-between}
+  .dem-leg-labels span{font-size:10px;color:var(--ink-soft)}
+  @media(max-width:560px){.dem-card{width:calc(100% - 24px);right:12px;top:auto;bottom:12px;max-height:65%}}
 </style>
 </head>
 <body>
@@ -454,6 +483,24 @@
     </section>
 
     <section class="acc" data-acc>
+      <button class="acc-head" aria-expanded="false"><span>Demographics</span><svg class="acc-chev" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button>
+      <div class="acc-body"><div class="acc-inner">
+        <div class="chips" role="group" aria-label="Demographics layer">
+          <button class="chip" id="demToggle" disabled>Population density</button>
+        </div>
+        <div class="lhint" style="margin-top:6px">Click any district on the map to see income, poverty &amp; population data.</div>
+        <div id="demLegend" style="display:none;margin-top:10px">
+          <div class="dem-leg-swatch">
+            <div style="background:#d7e8e3"></div><div style="background:#9cc9bd"></div>
+            <div style="background:#5ba392"></div><div style="background:#2e7364"></div>
+            <div style="background:#174a40"></div>
+          </div>
+          <div class="dem-leg-labels"><span>Lower pop.</span><span>Higher pop.</span></div>
+        </div>
+      </div></div>
+    </section>
+
+    <section class="acc" data-acc>
       <button class="acc-head" aria-expanded="false"><span>Area project scan</span><svg class="acc-chev" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button>
       <div class="acc-body"><div class="acc-inner">
         <div class="rt-row"><span>Radius</span>
@@ -487,6 +534,15 @@
   <div class="sc-head"><h2 id="scName"></h2><div class="sub" id="scSub"></div>
     <button class="sc-x" id="scX" aria-label="Close">×</button></div>
   <div class="sc-body" id="scBody"></div>
+</div>
+
+<div class="dem-card" id="demCard" role="dialog" aria-label="District demographics">
+  <div class="dem-head">
+    <h2 id="demName"></h2>
+    <div class="sub" id="demState"></div>
+    <button class="dem-x" id="demX" aria-label="Close">×</button>
+  </div>
+  <div class="dem-body" id="demBody"></div>
 </div>
 
 <div class="rt-report" id="rtReport" role="dialog" aria-label="Area project scan">
@@ -1619,6 +1675,152 @@ botLog.addEventListener('click', e=>{
   if (view!=='proj') setView('proj');
   map.flyTo([lat,lon], 15);
 });
+
+// ---- Demographics (DOSM district-level choropleth) ----
+const DEM_COLORS = ['#d7e8e3','#9cc9bd','#5ba392','#2e7364','#174a40'];
+const ETH_LABELS = {bumi_malay:'Bumiputera (Malay)',bumi_other:'Bumiputera (Other)',chinese:'Chinese',indian:'Indian',other_citizen:'Other citizens',other_noncitizen:'Non-citizens'};
+let DEMDATA = null, demLayer = null, demActive = false, demSelected = null, demBreaks = [];
+
+function demColor(val){
+  for(let i=0;i<demBreaks.length;i++) if(val<=demBreaks[i]) return DEM_COLORS[i];
+  return DEM_COLORS[DEM_COLORS.length-1];
+}
+function fmtPop(n){ return n>=1000?(n/1000).toFixed(2)+'M':n.toFixed(1)+'k'; }
+function fmtRM(n){ return 'RM '+Number(n).toLocaleString(); }
+
+function demSparkSVG(pairs, color){
+  if(!pairs||pairs.length<2) return '';
+  const vals=pairs.map(p=>p[1]), mn=Math.min(...vals), mx=Math.max(...vals);
+  const W=308,H=34,P=2;
+  const sx=i=>P+(i/(pairs.length-1))*(W-P*2);
+  const sy=v=>P+(1-(mx===mn?0.5:(v-mn)/(mx-mn)))*(H-P*2);
+  const pts=pairs.map((p,i)=>`${sx(i).toFixed(1)},${sy(p[1]).toFixed(1)}`).join(' ');
+  return `<svg class="dem-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <text x="${sx(0)}" y="${H}" font-size="9" fill="rgba(27,42,36,.5)">${pairs[0][0]}</text>
+    <text x="${sx(pairs.length-1)}" y="${H}" font-size="9" fill="rgba(27,42,36,.5)" text-anchor="end">${pairs[pairs.length-1][0]}</text>
+  </svg>`;
+}
+
+function showDemPanel(feature){
+  const s=feature.properties.stats, name=feature.properties.shapeName;
+  document.getElementById('demName').textContent=name;
+  document.getElementById('demState').textContent=s.state||'';
+  const tot=s.total||1;
+  const firstTrend=s.trend&&s.trend.length?s.trend[0]:null;
+  const growthPct=firstTrend?((tot-firstTrend[1])/firstTrend[1]*100).toFixed(1):null;
+  const growthHTML=growthPct!=null?` &middot; <b style="color:${+growthPct>=0?'#2e7364':'#c0392b'}">${+growthPct>=0?'+':''}${growthPct}%</b> since ${firstTrend[0]}`:'';
+  const malePct=tot?Math.round(s.male/tot*100):0;
+  const femalePct=tot?Math.round(s.female/tot*100):0;
+  const ethEntries=Object.entries(ETH_LABELS)
+    .map(([k,label])=>({label,val:s.ethnicity?.[k]||0}))
+    .filter(e=>e.val>0).sort((a,b)=>b.val-a.val);
+  const ethMax=ethEntries.length?ethEntries[0].val:1;
+  const ethHTML=ethEntries.map(e=>{
+    const pct=tot>0?(e.val/tot*100).toFixed(1):'0';
+    const bw=(e.val/ethMax*100).toFixed(1);
+    return `<div class="dem-eth-row"><span class="dem-eth-label">${e.label}</span>
+      <div class="dem-eth-wrap"><div class="dem-eth-bar" style="width:${bw}%"></div></div>
+      <span class="dem-eth-pct">${pct}%</span></div>`;
+  }).join('');
+  document.getElementById('demBody').innerHTML=`
+    <div class="dem-section">
+      <div class="dem-slabel">Population (${s.trend&&s.trend.length?s.trend[s.trend.length-1][0]:'2025'})</div>
+      <div class="dem-big">${fmtPop(tot)}</div>
+      <div class="dem-sub">${malePct}% male &middot; ${femalePct}% female${growthHTML}</div>
+      ${demSparkSVG(s.trend,'#5ba392')}
+    </div>
+    <hr class="dem-divider">
+    <div class="dem-section">
+      <div class="dem-slabel">Household income (${s.income_year||'2024'})</div>
+      <div class="dem-stat"><span class="key">Median</span><span class="val">${fmtRM(s.income_median)}/mo</span></div>
+      <div class="dem-stat"><span class="key">Mean</span><span class="val">${fmtRM(s.income_mean)}/mo</span></div>
+      ${demSparkSVG(s.income_trend,'#2e7364')}
+    </div>
+    <hr class="dem-divider">
+    <div class="dem-section">
+      <div class="dem-slabel">Poverty</div>
+      <div class="dem-stat"><span class="key">Absolute poverty rate</span><span class="val">${s.poverty_absolute.toFixed(1)}%</span></div>
+      <div class="dem-stat"><span class="key">Relative poverty rate</span><span class="val">${s.poverty_relative.toFixed(1)}%</span></div>
+    </div>
+    <hr class="dem-divider">
+    <div class="dem-section">
+      <div class="dem-slabel">Ethnicity breakdown</div>
+      ${ethHTML}
+    </div>`;
+  document.getElementById('demCard').style.display='block';
+}
+
+function closeDemPanel(){
+  document.getElementById('demCard').style.display='none';
+  if(demSelected){demLayer&&demLayer.resetStyle(demSelected);demSelected=null;}
+}
+
+function buildDemLayer(){
+  if(!DEMDATA||demLayer) return;
+  const pops=DEMDATA.features.map(f=>f.properties.stats.total).sort((a,b)=>a-b);
+  const q=p=>pops[Math.min(pops.length-1,Math.floor(p*pops.length))];
+  demBreaks=[q(0.2),q(0.4),q(0.6),q(0.8)];
+  map.createPane('demPane');
+  map.getPane('demPane').style.zIndex=380;
+  demLayer=L.geoJSON(DEMDATA,{
+    pane:'demPane',
+    style:f=>({fillColor:demColor(f.properties.stats.total),fillOpacity:0.55,color:'#fff',weight:0.8,opacity:0.6}),
+    onEachFeature:(f,ly)=>{
+      ly.on({
+        mouseover:e=>{
+          if(e.target!==demSelected) e.target.setStyle({weight:2,color:'#2e7364',fillOpacity:0.72});
+          e.target.bringToFront();
+          const s=f.properties.stats;
+          e.target.bindTooltip(`<b>${f.properties.shapeName}</b><br>${s.state} &middot; ${fmtPop(s.total)} &middot; ${fmtRM(s.income_median)}/mo`,
+            {sticky:true,direction:'top',offset:[0,-4]}).openTooltip(e.latlng);
+        },
+        mouseout:e=>{ if(e.target!==demSelected) demLayer.resetStyle(e.target); e.target.closeTooltip(); },
+        click:e=>{
+          L.DomEvent.stopPropagation(e);
+          if(demSelected) demLayer.resetStyle(demSelected);
+          demSelected=e.target;
+          demSelected.setStyle({weight:2.5,color:'#143C2B',fillOpacity:0.78});
+          showDemPanel(f);
+        }
+      });
+    }
+  });
+}
+
+function toggleDem(){
+  if(!DEMDATA) return;
+  demActive=!demActive;
+  const btn=document.getElementById('demToggle');
+  const leg=document.getElementById('demLegend');
+  if(demActive){
+    buildDemLayer();
+    demLayer.addTo(map);
+    btn.classList.add('on');
+    leg.style.display='block';
+  } else {
+    if(demLayer) map.removeLayer(demLayer);
+    closeDemPanel();
+    btn.classList.remove('on');
+    leg.style.display='none';
+  }
+}
+
+fetch('data.json')
+  .then(r=>r.json())
+  .then(data=>{
+    DEMDATA=data;
+    const btn=document.getElementById('demToggle');
+    btn.disabled=false;
+    btn.title='';
+  })
+  .catch(()=>{
+    const btn=document.getElementById('demToggle');
+    btn.textContent='Data unavailable';
+  });
+
+document.getElementById('demToggle').addEventListener('click',toggleDem);
+document.getElementById('demX').addEventListener('click',closeDemPanel);
 
 apply();
 </script>
