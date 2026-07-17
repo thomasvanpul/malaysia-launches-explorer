@@ -188,6 +188,35 @@
   .ad-headline{font-size:12.5px;font-weight:600;color:var(--ink);line-height:1.25}
   .ad-desc{font-size:11px;color:var(--ink-soft);margin-top:2px}
   .ad-badge{font-size:9.5px;color:rgba(27,42,36,.38);margin-top:5px;letter-spacing:.02em}
+
+  /* ---------- map-overlay ad spots ---------- */
+  .ad-top-banner{position:fixed;top:0;left:330px;right:0;height:56px;z-index:900;
+    background:rgba(247,245,240,.96);backdrop-filter:blur(6px);
+    border-bottom:1px solid rgba(27,42,36,.1);
+    display:flex;align-items:center;justify-content:center;gap:14px}
+  .ad-top-banner .ad-label{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:rgba(27,42,36,.35);flex:none}
+  .ad-top-banner .ad-inner{display:flex;align-items:center;gap:10px;cursor:pointer;
+    border:1px dashed rgba(27,42,36,.2);border-radius:8px;padding:6px 14px;
+    transition:background .15s}
+  .ad-top-banner .ad-inner:hover{background:rgba(27,42,36,.04)}
+  .ad-top-banner .ad-inner b{font-size:12.5px;color:var(--ink)}
+  .ad-top-banner .ad-inner span{font-size:11px;color:var(--ink-soft)}
+  .ad-top-banner .ad-size{font-size:9px;color:rgba(27,42,36,.3);margin-left:8px}
+
+  .ad-right-rect{position:fixed;top:50%;right:16px;transform:translateY(-50%);
+    z-index:900;width:160px;
+    background:rgba(247,245,240,.96);backdrop-filter:blur(6px);
+    border:1px solid rgba(27,42,36,.1);border-radius:12px;
+    padding:10px;box-shadow:var(--shadow)}
+  .ad-right-rect .ad-label{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:rgba(27,42,36,.35);margin-bottom:6px}
+  .ad-right-rect .ad-body{border:1px dashed rgba(27,42,36,.2);border-radius:8px;
+    padding:12px 8px;text-align:center;cursor:pointer;transition:background .15s;min-height:180px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+  .ad-right-rect .ad-body:hover{background:rgba(27,42,36,.04)}
+  .ad-right-rect .ad-body .ad-icon{font-size:28px}
+  .ad-right-rect .ad-body b{font-size:11.5px;color:var(--ink);line-height:1.3}
+  .ad-right-rect .ad-body span{font-size:10px;color:var(--ink-soft)}
+  .ad-right-rect .ad-size{font-size:9px;color:rgba(27,42,36,.3);margin-top:5px;text-align:center}
   .leaflet-popup-content{margin:0;width:auto !important}
   .pop{padding:14px 16px 15px;width:272px;box-sizing:border-box}
   .pop .tag{display:inline-block;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;
@@ -612,6 +641,27 @@
     </div>
 
   </div>
+</div>
+
+<!-- Ad: top leaderboard banner (728×90 equivalent) -->
+<div class="ad-top-banner" aria-label="Advertisement">
+  <div class="ad-label">Ad</div>
+  <div class="ad-inner">
+    <span style="font-size:18px">🏠</span>
+    <div><b>Advertise your development here</b> <span>Reach 50,000+ property seekers monthly</span></div>
+    <span class="ad-size">728 × 90</span>
+  </div>
+</div>
+
+<!-- Ad: right-side medium rectangle (160×300 equivalent) -->
+<div class="ad-right-rect" aria-label="Advertisement">
+  <div class="ad-label">Advertisement</div>
+  <div class="ad-body">
+    <div class="ad-icon">🏗️</div>
+    <b>Launch your project with EdgeProp</b>
+    <span>Premium placement for developers</span>
+  </div>
+  <div class="ad-size">160 × 300</div>
 </div>
 
 <div class="statcard" id="sc" role="dialog" aria-label="State statistics">
@@ -1968,7 +2018,8 @@ AM_TYPES.forEach(t => {
 fetch('amenities.json')
   .then(r => r.json())
   .then(items => {
-    const counts = {};
+    const byType = {};
+    AM_TYPES.forEach(t => { byType[t.id] = []; });
     items.forEach(item => {
       const t = AM_TYPES.find(x => x.id === item.t);
       if (!t) return;
@@ -1976,14 +2027,17 @@ fetch('amenities.json')
         icon: L.divIcon({className:'', iconSize:[12,12], iconAnchor:[6,6],
           html:`<div class="am-dot" style="width:12px;height:12px;background:${t.color}"></div>`})
       });
-      if (item.n) m.bindPopup(`<div class="pop" style="width:190px;padding:10px 12px"><b style="font-size:13px">${item.n}</b><div style="font-size:11px;color:var(--ink-soft);margin-top:3px;text-transform:capitalize">${item.t.replace('supermarkets','Supermarket').replace('schools','School').replace('hospitals','Hospital / Clinic').replace('malls','Shopping Mall')}</div></div>`,{maxWidth:210});
-      amGroups[item.t].addLayer(m);
-      counts[item.t] = (counts[item.t]||0)+1;
+      if (item.n) m.bindPopup(
+        `<div class="pop" style="width:190px;padding:10px 12px"><b style="font-size:13px">${item.n}</b><div style="font-size:11px;color:var(--ink-soft);margin-top:3px;text-transform:capitalize">${t.id.replace('supermarkets','Supermarket').replace('schools','School').replace('hospitals','Hospital / Clinic').replace('malls','Shopping Mall')}</div></div>`,
+        {maxWidth:210});
+      byType[item.t].push(m);
     });
+    AM_TYPES.forEach(t => { if (byType[t.id].length) amGroups[t.id].addLayers(byType[t.id]); });
+    const c = byType;
     document.getElementById('amenHint').textContent =
-      `${(counts.schools||0).toLocaleString()} schools · ${(counts.supermarkets||0).toLocaleString()} supermarkets · ${(counts.hospitals||0).toLocaleString()} hospitals · ${(counts.malls||0)} malls`;
+      `${(c.schools||[]).length.toLocaleString()} schools · ${(c.supermarkets||[]).length.toLocaleString()} supermarkets · ${(c.hospitals||[]).length.toLocaleString()} hospitals · ${(c.malls||[]).length} malls`;
   })
-  .catch(() => { document.getElementById('amenHint').textContent = 'Amenity data unavailable.'; });
+  .catch(e => { console.error('amenities.json load failed:', e); document.getElementById('amenHint').textContent = 'Amenity data unavailable.'; });
 
 AM_TYPES.forEach(t => {
   document.getElementById(t.togId).addEventListener('change', e => {
