@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>New Property Launches · Peninsular Malaysia 2021–2025</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css">
@@ -310,7 +310,7 @@
   .bot-input button:hover{background:#27443A}
   .bot-note{font-size:9.5px;color:var(--ink-soft);opacity:.7;text-align:center;padding:0 12px 8px}
   @media (max-width:560px){
-    .botwin{left:12px;right:12px;transform:none;width:auto;bottom:14px}
+    .botwin{left:12px;right:12px;transform:none;width:auto;bottom:max(14px,env(safe-area-inset-bottom,14px))}
     .botwin.open{height:56vh;max-height:56vh}
   }
 
@@ -348,8 +348,8 @@
   .g-act:hover{background:rgba(20,60,43,.12)}
   .g-act span{display:block;font-weight:400;font-size:11px;color:var(--ink-soft);margin-top:2px}
   @media (max-width:560px){
-    .gcard{width:calc(100% - 24px);right:12px;top:auto;bottom:64px;max-height:70%}
-    .gbtn{bottom:78px;right:12px}
+    .gcard{width:calc(100% - 24px);right:12px;top:auto;bottom:90px;max-height:62%;z-index:1210}
+    .gbtn{bottom:90px;right:12px}
   }
 
   /* paywall */
@@ -418,7 +418,7 @@
   .ramp{height:10px;border-radius:5px;background:linear-gradient(90deg,#EAF1EE,#1B4D43)}
   .ramplbl{display:flex;justify-content:space-between;font-size:10px;color:var(--ink-soft);margin-top:3px;font-variant-numeric:tabular-nums}
   .statcard{
-    position:absolute;z-index:1100;top:16px;right:16px;width:330px;max-height:calc(100% - 32px);
+    position:absolute;z-index:1100;top:66px;right:16px;width:330px;max-height:calc(100% - 82px);
     overflow-y:auto;background:var(--paper);border-radius:14px;box-shadow:var(--shadow);
     border:1px solid rgba(27,42,36,.08);display:none;
   }
@@ -446,9 +446,22 @@
   .leaflet-interactive.state-sel{filter:drop-shadow(0 0 4px rgba(27,42,36,.5))}
 
   @media (max-width:560px){
-    .statcard{width:calc(100% - 24px);right:12px;top:auto;bottom:12px;max-height:62%}
+    /* Top banner — hides on mobile; not enough horizontal space */
+    .ad-top-banner{display:none}
+    /* Panel */
     .panel{width:calc(100% - 24px);left:12px;top:12px}
-    .legend{top:auto;bottom:14px;right:12px;padding:8px 10px;max-width:180px}
+    .panel-body{max-height:calc(68vh - 70px)}
+    /* Bottom-sheet panels — full-width, anchored to bottom, rounded top corners */
+    .statcard{width:100%;left:0;right:0;top:auto;bottom:0;max-height:72%;border-radius:14px 14px 0 0}
+    .rt-report{width:100%;left:0;right:0;top:auto;bottom:0;max-height:72%;border-radius:14px 14px 0 0}
+    /* Legend — hidden on mobile (price filters accessible via panel) */
+    .legend{display:none}
+    /* Leaflet zoom controls — lift above botwin handle */
+    .leaflet-bottom.leaflet-right{bottom:86px}
+    /* Bottom-sheet drag handle on dark headers */
+    .sc-head,.rt-rhead{padding-top:22px;position:relative}
+    .sc-head::before,.rt-rhead::before{content:'';position:absolute;top:8px;left:50%;transform:translateX(-50%);
+      width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,.3)}
   }
   @media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
   /* ---------- demographics district panel ---------- */
@@ -480,7 +493,12 @@
   .dem-leg-labels{display:flex;justify-content:space-between}
   .dem-leg-labels span{font-size:10px;color:var(--ink-soft)}
   .leaflet-interactive:focus{outline:none}
-  @media(max-width:560px){.dem-card{width:calc(100% - 24px);right:12px;top:auto;bottom:12px;max-height:65%}}
+  @media(max-width:560px){
+    .dem-card{width:100%;left:0;right:0;top:auto;bottom:0;max-height:72%;border-radius:14px 14px 0 0}
+    .dem-head{border-radius:0;padding-top:22px;position:relative}
+    .dem-head::before{content:'';position:absolute;top:8px;left:50%;transform:translateX(-50%);
+      width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,.3)}
+  }
 </style>
 </head>
 <body>
@@ -956,7 +974,7 @@ function buildTipHTML(d){
 
 function renderCatchment(hits, latlng){
   const rep = document.getElementById('rtReport');
-  rep.classList.add('open'); syncLegendVisibility();
+  rep.classList.add('open'); syncLegendVisibility(); closePanelMobile();
   document.getElementById('gcard').classList.remove('open');
   document.getElementById('sc').classList.remove('open');
   document.getElementById('rtTitle').textContent = rtState.radius.toFixed(1)+' km area scan';
@@ -1175,7 +1193,7 @@ function guideArticle(id){
 document.getElementById('gbtn').addEventListener('click', () => {
   gcard.classList.add('open');
   document.getElementById('sc').classList.remove('open');
-  guideList(); syncLegendVisibility();
+  guideList(); syncLegendVisibility(); closePanelMobile();
 });
 document.getElementById('gX').addEventListener('click', () => { gcard.classList.remove('open'); syncLegendVisibility(); });
 document.getElementById('gBody').addEventListener('click', e => {
@@ -1375,6 +1393,18 @@ panelBtn.addEventListener('click', () => {
   const closed = panelEl.classList.toggle('closed');
   panelBtn.setAttribute('aria-expanded', String(!closed));
 });
+// auto-close panel on mobile so the map is visible on first load
+if (window.matchMedia('(max-width:560px)').matches){
+  panelEl.classList.add('closed');
+  panelBtn.setAttribute('aria-expanded','false');
+}
+// helper: collapse the panel when a bottom-sheet card opens on mobile
+function closePanelMobile(){
+  if (window.matchMedia('(max-width:560px)').matches && !panelEl.classList.contains('closed')){
+    panelEl.classList.add('closed');
+    panelBtn.setAttribute('aria-expanded','false');
+  }
+}
 
 // legend collapse
 // keep the top-right legend out of the way when a right-side card is open
@@ -1668,7 +1698,7 @@ function openCard(nm, s, ly){
     <div class="splitlbl"><span>Freehold ${fpct}%</span><span>Leasehold ${100-fpct}%</span></div>
     <div class="sc-sec">Largest developers (by units)</div>${isPro ? devs : lockBlock('Developer league table — Pro')}`;
   document.getElementById('gcard').classList.remove('open');
-  document.getElementById('sc').classList.add('open'); syncLegendVisibility();
+  document.getElementById('sc').classList.add('open'); syncLegendVisibility(); closePanelMobile();
 }
 document.getElementById('scX').addEventListener('click', () => {
   document.getElementById('sc').classList.remove('open'); syncLegendVisibility();
@@ -1892,7 +1922,7 @@ function showDemPanel(feature){
       <div class="dem-slabel">Ethnicity breakdown</div>
       ${ethHTML}
     </div>`;
-  document.getElementById('demCard').style.display='block';
+  document.getElementById('demCard').style.display='block'; closePanelMobile();
 }
 
 function closeDemPanel(){
